@@ -312,7 +312,7 @@ if __name__ == "__main__":
                 print(
                     "  2. If you have just claimed it, please wait another minute for it to apply."
                 )
-                print("  3. Once confirmed, please run the `./init.sh` script again.")
+                print("  3. Once confirmed, please run the `./setup_billing.sh` script again.")
                 print("---------------------------------------------------")
             else:
                 open_accounts = [acc for acc in accounts_result if acc.open]
