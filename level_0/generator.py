@@ -60,6 +60,7 @@ def generate_explorer_avatar() -> dict:
 
     # =========================================================================
     # MODULE_5_STEP_1_CREATE_CHAT_SESSION
+    # =========================================================================
     # Create a chat session to maintain character consistency across generations.
     # The chat session preserves context between turns, so Gemini "remembers"
     # what it generated and can create consistent variations.
@@ -73,23 +74,43 @@ def generate_explorer_avatar() -> dict:
     # =========================================================================
     # MODULE_5_STEP_2_GENERATE_PORTRAIT
     # =========================================================================
-    # TODO: Generate the explorer portrait
-    #
-    # 1. Create a portrait_prompt string that includes:
-    #    - APPEARANCE, USERNAME, and SUIT_COLOR variables
-    #    - Style requirements (digital illustration, white background, etc.)
-    #
-    # 2. Send the prompt using chat.send_message(portrait_prompt)
-    #
-    # 3. Extract the image from the response:
-    #    - Loop through portrait_response.candidates[0].content.parts
-    #    - Find the part where part.inline_data is not None
-    #    - Convert to PIL Image: Image.open(io.BytesIO(part.inline_data.data))
-    #    - Save to "outputs/portrait.png"
-    #
-    # 4. Print progress messages for user feedback
-    # =========================================================================
-    portrait_image = None # Replace this section
+    # First turn: Generate the explorer portrait.
+    # This establishes the character that will be referenced in subsequent turns.
+    portrait_prompt = f"""Create a stylized space explorer portrait.
+
+Character appearance: {APPEARANCE}
+Name on suit patch: "{USERNAME}"
+Suit color: {SUIT_COLOR}
+
+CRITICAL STYLE REQUIREMENTS:
+- Digital illustration style, clean lines, vibrant saturated colors
+- Futuristic but weathered space suit with visible mission patches
+- Background: Pure solid white (#FFFFFF) - absolutely no gradients, patterns, or elements
+- Frame: Head and shoulders only, 3/4 view facing slightly left
+- Lighting: Soft diffused studio lighting, no harsh shadows
+- Expression: Determined but approachable
+- Art style: Modern animated movie character portrait (similar to Pixar or Dreamworks style)
+
+The white background is essential - the avatar will be composited onto a map."""
+
+    print("🎨 Generating your portrait...")
+    portrait_response = chat.send_message(portrait_prompt)
+    
+    # Extract the image from the response.
+    # Gemini returns a response with multiple "parts" - we need to find the image part.
+    portrait_image = None
+    for part in portrait_response.candidates[0].content.parts:
+        if part.inline_data is not None:
+            # Found the image! Convert from bytes to PIL Image and save.
+            image_bytes = part.inline_data.data
+            portrait_image = Image.open(io.BytesIO(image_bytes))
+            portrait_image.save("outputs/portrait.png")
+            break
+    
+    if portrait_image is None:
+        raise Exception("Failed to generate portrait - no image in response")
+    
+    print("✓ Portrait generated!")
 
     # =========================================================================
     # MODULE_5_STEP_3_GENERATE_ICON
