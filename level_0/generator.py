@@ -115,21 +115,37 @@ The white background is essential - the avatar will be composited onto a map."""
     # =========================================================================
     # MODULE_5_STEP_3_GENERATE_ICON
     # =========================================================================
-    # TODO: Generate a consistent map icon
-    #
-    # 1. Create an icon_prompt that asks for the SAME character
-    #    - Emphasize consistency: "SAME person, SAME face, SAME suit"
-    #    - Request tighter crop (head and shoulders only)
-    #    - Request white background and square aspect ratio
-    #
-    # 2. Send the prompt using chat.send_message(icon_prompt)
-    #    - The chat session remembers the character from step 2!
-    #
-    # 3. Extract and save the icon image to "outputs/icon.png"
-    #
-    # 4. Print progress messages for user feedback
-    # =========================================================================
-    icon_image = None # Replace this section
+    # Second turn: Generate a consistent icon for the map.
+    # Because we're in the same chat session, Gemini remembers the character
+    # from the portrait and will maintain visual consistency.
+    icon_prompt = """Now create a circular map icon of this SAME character.
+
+CRITICAL REQUIREMENTS:
+- SAME person, SAME face, SAME expression, SAME suit — maintain perfect consistency with the portrait
+- Tighter crop: just the head and very top of shoulders
+- Background: Pure solid white (#FFFFFF)
+- Optimized for small display sizes (will be used as a 64px map marker)
+- Keep the exact same art style, colors, and lighting as the portrait
+- Square 1:1 aspect ratio
+
+This icon must be immediately recognizable as the same character from the portrait."""
+
+    print("🖼️  Creating map icon...")
+    icon_response = chat.send_message(icon_prompt)
+    
+    # Extract the icon image from the response
+    icon_image = None
+    for part in icon_response.candidates[0].content.parts:
+        if part.inline_data is not None:
+            image_bytes = part.inline_data.data
+            icon_image = Image.open(io.BytesIO(image_bytes))
+            icon_image.save("outputs/icon.png")
+            break
+    
+    if icon_image is None:
+        raise Exception("Failed to generate icon - no image in response")
+    
+    print("✓ Icon generated!")
 
     return {
         "portrait_path": "outputs/portrait.png",
