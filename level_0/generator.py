@@ -60,16 +60,15 @@ def generate_explorer_avatar() -> dict:
 
     # =========================================================================
     # MODULE_5_STEP_1_CREATE_CHAT_SESSION
-    # =========================================================================
-    # TODO: Create a chat session for multi-turn generation
-    #
-    # Create a chat session using client.chats.create() with:
-    # - model: "gemini-2.5-flash-image" (Nano Banana)
-    # - config: GenerateContentConfig with response_modalities=["TEXT", "IMAGE"]
-    #
-    # Hint: You need to use types.GenerateContentConfig
-    # =========================================================================
-    chat = None # Replace this line
+    # Create a chat session to maintain character consistency across generations.
+    # The chat session preserves context between turns, so Gemini "remembers"
+    # what it generated and can create consistent variations.
+    chat = client.chats.create(
+        model="gemini-2.5-flash-image",  # Nano Banana - Gemini with image generation
+        config=types.GenerateContentConfig(
+            response_modalities=["TEXT", "IMAGE"]
+        )
+    )
 
     # =========================================================================
     # MODULE_5_STEP_2_GENERATE_PORTRAIT
