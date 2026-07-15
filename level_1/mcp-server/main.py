@@ -115,7 +115,66 @@ def parse_json_response(text: str) -> dict:
 # The tool uses Gemini's vision capabilities to examine the image and
 # classify what it observes into one of four biome categories.
 
-#REPLACE-GEOLOGICAL-TOOL
+GEOLOGICAL_PROMPT = """Analyze this alien soil sample image.
+
+Classify the PRIMARY characteristic (choose exactly one):
+
+1. CRYO - Frozen/icy minerals, crystalline structures, frost patterns,
+   blue-white coloration, permafrost indicators
+
+2. VOLCANIC - Volcanic rock, basalt, obsidian, sulfur deposits,
+   red-orange minerals, heat-formed crystite structures
+
+3. BIOLUMINESCENT - Glowing particles, phosphorescent minerals,
+   organic-mineral hybrids, purple-green luminescence
+
+4. FOSSILIZED - Ancient compressed minerals, amber deposits,
+   petrified organic matter, golden-brown stratification
+
+Respond ONLY with valid JSON (no markdown, no explanation):
+{
+    "biome": "CRYO|VOLCANIC|BIOLUMINESCENT|FOSSILIZED",
+    "confidence": 0.0-1.0,
+    "minerals_detected": ["mineral1", "mineral2"],
+    "description": "Brief description of what you observe"
+}
+"""
+
+
+@mcp.tool()
+def analyze_geological(
+    image_url: Annotated[
+        str,
+        Field(description="Cloud Storage URL (gs://...) of the soil sample image")
+    ]
+) -> dict:
+    """
+    Analyzes a soil sample image to identify mineral composition and classify the planetary biome.
+    
+    Args:
+        image_url: Cloud Storage URL of the soil sample image (gs://bucket/path/image.png)
+        
+    Returns:
+        dict with biome, confidence, minerals_detected, and description
+    """
+    logger.info(f">>> 🔬 Tool: 'analyze_geological' called for '{image_url}'")
+    
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                GEOLOGICAL_PROMPT,
+                genai_types.Part.from_uri(file_uri=image_url, mime_type="image/png")
+            ]
+        )
+        
+        result = parse_json_response(response.text)
+        logger.info(f"    ✓ Geological analysis complete: {result.get('biome', 'UNKNOWN')}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"    ✗ Geological analysis failed: {str(e)}")
+        return {"error": str(e), "biome": "UNKNOWN", "confidence": 0.0}
 
 
 # =============================================================================
