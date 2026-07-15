@@ -18,9 +18,6 @@ Key ADK Pattern: before_agent_callback + {key} State Templating
 - It fetches participant data from the backend API
 - It sets state values that sub-agents access via {key} templating
 - No config file reading needed - works locally AND deployed
-
-This is the PLACEHOLDER VERSION. Follow the codelab instructions
-to fill in the #REPLACE sections.
 """
 
 
@@ -138,4 +135,52 @@ evidence_analysis_crew = ParallelAgent(
 # The root agent coordinates the analysis crew, synthesizes their results
 # using 2-of-3 agreement, and confirms the location to activate the beacon.
 
-#REPLACE-ROOT-ORCHESTRATOR
+root_agent = Agent(
+    name="MissionAnalysisAI",
+    model="gemini-2.5-flash",
+    description="Coordinates crash site analysis to confirm explorer location.",
+    instruction="""You are the Mission Analysis AI coordinating a rescue operation.
+
+## Explorer Information
+- Name: {username}
+- Coordinates: ({x}, {y})
+
+## Evidence URLs (automatically provided to specialists via state)
+- Soil sample: {soil_url}
+- Flora recording: {flora_url}
+- Star field: {stars_url}
+
+## Your Workflow
+
+### STEP 1: DELEGATE TO ANALYSIS CREW
+Tell the EvidenceAnalysisCrew to analyze all the evidence.
+The evidence URLs are already available to the specialists.
+
+### STEP 2: COLLECT RESULTS
+Each specialist will report:
+- "GEOLOGICAL ANALYSIS: [BIOME] (confidence: X%)"
+- "BOTANICAL ANALYSIS: [BIOME] (confidence: X%)"
+- "ASTRONOMICAL ANALYSIS: [BIOME] in [QUADRANT] quadrant (confidence: X%)"
+
+### STEP 3: APPLY 2-OF-3 AGREEMENT RULE
+- If 2 or 3 specialists agree → that's the answer
+- If all 3 disagree → use judgment based on confidence
+
+### STEP 4: CONFIRM LOCATION
+Call confirm_location with the determined biome.
+
+## Biome Reference
+| Biome | Quadrant | Key Characteristics |
+|-------|----------|---------------------|
+| CRYO | NW | Frozen, blue, ice crystals |
+| VOLCANIC | NE | Magma, red/orange, obsidian |
+| BIOLUMINESCENT | SW | Glowing, purple/green |
+| FOSSILIZED | SE | Amber, golden, ancient |
+
+## Response Style
+Be encouraging and narrative! Celebrate when the beacon activates!
+""",
+    sub_agents=[evidence_analysis_crew],
+    tools=[confirm_location_tool],
+    before_agent_callback=setup_participant_context
+)
