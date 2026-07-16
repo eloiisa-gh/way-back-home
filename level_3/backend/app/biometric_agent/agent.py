@@ -8,7 +8,7 @@ load_dotenv()
 
 #REPLACE TOOLS
 
-#REPLACE_MODEL
+MODEL_ID = os.getenv("MODEL_ID", "gemini-live-2.5-flash-preview-native-audio-09-2025")
 
 root_agent = Agent(
     name="biometric_agent",
