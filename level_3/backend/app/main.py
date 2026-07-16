@@ -140,7 +140,72 @@ async def websocket_endpoint(
             app_name=APP_NAME, user_id=user_id, session_id=session_id
         )
     
-    #REPLACE_LIVE_REQUEST
+    # ========================================
+    # Phase 3: Active Session (concurrent bidirectional communication)
+    # ========================================
+
+    live_request_queue = LiveRequestQueue()
+
+    # Send an initial "Hello" to the model to wake it up/force a turn
+    logger.info("Sending initial 'Hello' stimulus to model...")
+    live_request_queue.send_content(types.Content(parts=[types.Part(text="Hello")]))
+
+    async def upstream_task() -> None:
+        """Receives messages from WebSocket and sends to LiveRequestQueue."""
+        frame_count = 0
+        audio_count = 0
+
+        try:
+            while True:
+                # Receive message from WebSocket (text or binary)
+                message = await websocket.receive()
+
+                # Handle binary frames (audio data)
+                if "bytes" in message:
+                    audio_data = message["bytes"]
+                    audio_blob = types.Blob(
+                        mime_type="audio/pcm;rate=16000", data=audio_data
+                    )
+                    live_request_queue.send_realtime(audio_blob)
+
+                # Handle text frames (JSON messages)
+                elif "text" in message:
+                    text_data = message["text"]
+                    json_message = json.loads(text_data)
+
+                    # Extract text from JSON and send to LiveRequestQueue
+                    if json_message.get("type") == "text":
+                        logger.info(f"User says: {json_message['text']}")
+                        content = types.Content(
+                            parts=[types.Part(text=json_message["text"])]
+                        )
+                        live_request_queue.send_content(content)
+
+                    # Handle audio data (microphone)
+                    elif json_message.get("type") == "audio":
+                        import base64
+                        # Decode base64 audio data
+                        audio_data = base64.b64decode(json_message.get("data", ""))
+
+                        # Send to Live API as PCM 16kHz
+                        audio_blob = types.Blob(
+                            mime_type="audio/pcm;rate=16000", 
+                            data=audio_data
+                        )
+                        live_request_queue.send_realtime(audio_blob)
+
+                    # Handle image data
+                    elif json_message.get("type") == "image":
+                        import base64
+                        # Decode base64 image data
+                        image_data = base64.b64decode(json_message["data"])
+                        mime_type = json_message.get("mimeType", "image/jpeg")
+
+                        # Send image as blob
+                        image_blob = types.Blob(mime_type=mime_type, data=image_data)
+                        live_request_queue.send_realtime(image_blob)
+        finally:
+             pass
 
 #REPLACE_SORT_RESPONSE
 
