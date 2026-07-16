@@ -61,7 +61,11 @@ app.add_middleware(
 )
 
 
-#REPLACE_RUNNER_CONFIG
+# Define your session service
+session_service = InMemorySessionService()
+
+# Define your runner
+runner = Runner(app_name=APP_NAME, agent=root_agent, session_service=session_service)
 
 # ========================================
 # WebSocket Endpoint
