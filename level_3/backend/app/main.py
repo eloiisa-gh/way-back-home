@@ -207,7 +207,55 @@ async def websocket_endpoint(
         finally:
              pass
 
-#REPLACE_SORT_RESPONSE
+    async def downstream_task() -> None:
+        """Receives Events from run_live() and sends to WebSocket."""
+        logger.info("Connecting to Gemini Live API...")
+        async for event in runner.run_live(
+            user_id=user_id,
+            session_id=session_id,
+            live_request_queue=live_request_queue,
+            run_config=run_config,
+        ):
+            # Parse event for human-readable logging
+            event_type = "UNKNOWN"
+            details = ""
+            
+            # Check for tool calls
+            if hasattr(event, "tool_call") and event.tool_call:
+                 event_type = "TOOL_CALL"
+                 details = str(event.tool_call.function_calls)
+                 logger.info(f"[SERVER-SIDE TOOL EXECUTION] {details}")
+            
+            # Check for user input transcription (Text or Audio Transcript)
+            input_transcription = getattr(event, "input_audio_transcription", None)
+            if input_transcription and input_transcription.final_transcript:
+                 logger.info(f"USER: {input_transcription.final_transcript}")
+            
+            # Check for model output transcription
+            output_transcription = getattr(event, "output_audio_transcription", None)
+            if output_transcription and output_transcription.final_transcript:
+                 logger.info(f"GEMINI: {output_transcription.final_transcript}")
+
+            event_json = event.model_dump_json(exclude_none=True, by_alias=True)
+            await websocket.send_text(event_json)
+        logger.info("Gemini Live API connection closed.")
+
+    # Run both tasks concurrently
+    # Exceptions from either task will propagate and cancel the other task
+    try:
+        await asyncio.gather(upstream_task(), downstream_task())
+    except WebSocketDisconnect:
+        logger.info("Client disconnected")
+    except Exception as e:
+        logger.error(f"Error: {e}", exc_info=False) # Reduced stack trace noise
+    finally:
+        # ========================================
+        # Phase 4: Session Termination
+        # ========================================
+
+        # Always close the queue, even if exceptions occurred
+        logger.debug("Closing live_request_queue")
+        live_request_queue.close()
 
 
 # Serve Static Files (Fallback for SPA)
