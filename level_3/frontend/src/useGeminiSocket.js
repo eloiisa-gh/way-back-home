@@ -35,7 +35,33 @@ export function useGeminiSocket(url) {
 
         ws.current.onmessage = async (event) => {
             try {
-//#REPLACE-HANDLE-MSG
+                const msg = JSON.parse(event.data);
+
+                // Helper to extract parts from various possible event structures
+                let parts = [];
+                if (msg.serverContent?.modelTurn?.parts) {
+                    parts = msg.serverContent.modelTurn.parts;
+                } else if (msg.content?.parts) {
+                    parts = msg.content.parts;
+                }
+
+                if (parts.length > 0) {
+                    parts.forEach(part => {
+                        // Handle Tool Calls (The "Sync" logic)
+                        if (part.functionCall) {
+                            if (part.functionCall.name === 'report_digit') {
+                                const count = parseInt(part.functionCall.args.count, 10);
+                                setLastMessage({ type: 'DIGIT_DETECTED', value: count });
+                            }
+                        }
+
+                        // Handle Audio (The AI's voice)
+                        if (part.inlineData && part.inlineData.data) {
+                            audioStreamer.current.resume();
+                            audioStreamer.current.addPCM16(part.inlineData.data);
+                        }
+                    });
+                }
             } catch (e) {
                 console.error('Failed to parse message', e, event.data.slice(0, 100));
             }
