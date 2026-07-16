@@ -92,7 +92,53 @@ async def websocket_endpoint(
     await websocket.accept()
     logger.info(f"WebSocket connected: {user_id}/{session_id}")
 
-    #REPLACE_SESSION_INIT
+    # ========================================
+    # Phase 2: Session Initialization (once per streaming session)
+    # ========================================
+
+    # Automatically determine response modality based on model architecture
+    # Native audio models (containing "native-audio" in name)
+    # ONLY support AUDIO response modality.
+    # Half-cascade models support both TEXT and AUDIO;
+    # we default to TEXT for better performance.
+
+    model_name = root_agent.model
+    is_native_audio = "native-audio" in model_name.lower() or "live" in model_name.lower()
+
+    if is_native_audio:
+        # Native audio models require AUDIO response modality
+        # with audio transcription
+        response_modalities = ["AUDIO"]
+
+        # Build RunConfig with optional proactivity and affective dialog
+        # These features are only supported on native audio models
+        run_config = RunConfig(
+            streaming_mode=StreamingMode.BIDI,
+            response_modalities=response_modalities,
+            input_audio_transcription=types.AudioTranscriptionConfig(),
+            output_audio_transcription=types.AudioTranscriptionConfig(),
+            session_resumption=types.SessionResumptionConfig(),
+            proactivity=(
+                types.ProactivityConfig(proactive_audio=True) if proactivity else None
+            ),
+            enable_affective_dialog=affective_dialog if affective_dialog else None,
+        )
+        logger.info(f"Model Config: {model_name} (Modalities: {response_modalities}, Proactivity: {proactivity})")
+    else:
+        # Half-cascade models support TEXT response modality
+        # for faster performance
+        response_modalities = ["TEXT"]
+        run_config = None
+        logger.info(f"Model Config: {model_name} (Modalities: {response_modalities})")
+
+    # Get or create session (handles both new sessions and reconnections)
+    session = await session_service.get_session(
+        app_name=APP_NAME, user_id=user_id, session_id=session_id
+    )
+    if not session:
+        await session_service.create_session(
+            app_name=APP_NAME, user_id=user_id, session_id=session_id
+        )
     
     #REPLACE_LIVE_REQUEST
 
