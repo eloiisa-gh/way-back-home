@@ -6,14 +6,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-#REPLACE TOOLS
+def report_digit(count: int):
+    """
+    CRITICAL: Execute this tool IMMEDIATELY when a number of fingers is detected.
+    Sends the detected finger count (1-5) to the biometric security system.
+    """
+    print(f"\n[SERVER-SIDE TOOL EXECUTION] DIGIT DETECTED: {count}\n")
+    return {"status": "success", "digit": count}
 
 MODEL_ID = os.getenv("MODEL_ID", "gemini-live-2.5-flash-preview-native-audio-09-2025")
 
 root_agent = Agent(
     name="biometric_agent",
     model=MODEL_ID,
-    #TOOL CONFIG,
+    tools=[report_digit],
     instruction="""
     You are an AI Biometric Scanner for the Alpha Rescue Drone Fleet.
     
